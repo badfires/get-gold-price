@@ -2,11 +2,17 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
+	"strings"
 )
+
+var filename string = "log_new.csv"
 
 type Select struct {
 	FMID string `json:"FMID"`
@@ -54,12 +60,13 @@ type godinfo struct {
 
 func main() {
 	var godinfo godinfo
-	getinfo(&godinfo)
-	saveinfo()
-	fmt.Printf("%v;%v;%v", godinfo.Name, godinfo.Jiage, godinfo.Timess)
+	Getinfo(&godinfo)
+	Saveinfo(&godinfo)
 
 }
-func getinfo(godinfo *godinfo) {
+
+//获取金价
+func Getinfo(godinfo *godinfo) {
 
 	var info info
 	var Select Select
@@ -96,4 +103,29 @@ func getinfo(godinfo *godinfo) {
 	}
 }
 
-func saveinfo() {}
+func Saveinfo(godinfo *godinfo) {
+
+	t, err := os.Open(filename)
+	defer t.Close()
+	if err != nil && os.IsNotExist(err) {
+		flname, err1 := os.Create(filename)
+		defer flname.Close()
+		if err1 != nil {
+			log.Print("创建文件出错,信息:", err1)
+		}
+		t.WriteString(("\xEF\xBB\xBF"))
+		wr := csv.NewWriter(flname)
+		wr.Write([]string{"时间", "价格(元)"})
+		wr.Flush()
+
+	}
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0666)
+	defer file.Close()
+	if err != nil {
+		fmt.Println("打开已有文件出错,信息:", err)
+	}
+	writer := csv.NewWriter(file)
+	filetxt := []string{godinfo.Timess, strings.Split(godinfo.Jiage, " ")[0]}
+	writer.Write(filetxt)
+	writer.Flush()
+}
